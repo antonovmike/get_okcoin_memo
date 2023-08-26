@@ -1,22 +1,30 @@
+use std::fs::File;
+use std::io::Read;
 use std::collections::HashMap;
 
 use reqwest::Error;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, AUTHORIZATION};
+use toml::Value;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let mut file = File::open("config.toml").expect("Could not open file");
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).expect("Could not read file");
+
+    let decoded: Value = toml::from_str(&contents).expect("Could not decode TOML");
+    let api_key = decoded.get("api_key").expect("Could not get api_key").as_str().expect("Could not convert to string");
+
+    // Make the request to the OKCoin API
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    // Bearer your_api_key_here
-    headers.insert(AUTHORIZATION, HeaderValue::from_static("Bearer your_api_key_here"));
+    headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
 
     let client = reqwest::Client::builder()
         .default_headers(headers)
         .build()?;
 
-    // GET /api/v5/asset/deposit-address
     let res = client.get("https://www.okcoin.com/api/v5/asset/deposit-address").send().await?;
-    // let res = client.get("https://www.okcoin.com/api/v5/account/balance").send().await?;
     let body = res.json::<HashMap<String, String>>().await?;
     
     if body.contains_key("memo") {
