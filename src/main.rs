@@ -14,10 +14,12 @@ async fn main() -> Result<(), Error> {
 
     let decoded: Value = toml::from_str(&contents).expect("Could not decode TOML");
     let api_key = decoded.get("api_key").expect("Could not get api_key").as_str().expect("Could not convert to string");
-
-    // Make the request to the OKCoin API
+    let secret_key = decoded.get("secret").expect("Could not get api_key").as_str().expect("Could not convert to string");
+    
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("OK-ACCESS-KEY", HeaderValue::from_str(api_key).unwrap());
+    headers.insert("OK-ACCESS-SIGN", HeaderValue::from_str(secret_key).unwrap());
     headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
 
     let client = reqwest::Client::builder()
@@ -28,9 +30,9 @@ async fn main() -> Result<(), Error> {
     let body = res.json::<HashMap<String, String>>().await?;
     
     if body.contains_key("memo") {
-        println!("memo: {:?}", body["memo"]);
+        println!("Memo: {:?}", body["memo"]);
     } else {
-        println!("memo is not present in the response:\n{body:?}");
+        println!("Memo is not present in the response:\n{body:?}");
     }
 
     Ok(())
